@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import os
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -40,11 +42,14 @@ availabilty_365 = df['availability_365'].count()
 average_number_of_reviews_per_neighbourhood = df.groupby('neighbourhood')['number_of_reviews'].mean()
 
 neighbour_hoods_average_price = df.groupby('neighbourhood')['price'].mean()
+neighbour_hoods_average_price_df = neighbour_hoods_average_price.to_frame('Average Price of neighbourhoods')
 
 top_10_expensive_neighbourhoods_price = neighbour_hoods_average_price.sort_values(ascending=False).head(10)
+
 cheapest_10_neighbourhoods_prices = neighbour_hoods_average_price.sort_values(ascending=True).head(10)
 
 average_price_per_neighbourhood_group = df.groupby('neighbourhood_group')['price'].mean()
+
 
 listings_greater_than_price_500_in_bronx = df[(df['neighbourhood_group'] == 'Bronx') & (df['price'] > 500)].value_counts().sum()
 
@@ -60,6 +65,8 @@ thirtydays_ago  = most_recent_review_data_30 - pd.Timedelta(days=30)
 
 listings_with_reviews_in_last_30_days = df[df['last_review'] > thirtydays_ago]
 
+minimum_nights_required_per_room_type = df.groupby('room_type')['minimum_nights'].min()
+minimum_nights_required_per_room_type_df = minimum_nights_required_per_room_type.reset_index()
 
 hosts_with_most_listings = df.groupby('host_name').size()
 top_5_hosts_with_most_listings = hosts_with_most_listings.sort_values(ascending=False).head(5)
@@ -86,8 +93,11 @@ high_availability = df['availability_365'].quantile(0.75)
 ideal_listings = df[(df['number_of_reviews'] > high_reviews) & 
                     (df['price'] < low_price) &
                     (df['availability_365'] > high_availability)]
+ideal_listings_df = ideal_listings.reset_index()
 
 suspicious_listings = df[(df['availability_365'] == 0) & (df['number_of_reviews'] == 0) & (df['price'] > 1000)]
+
+suspicious_listings_df = suspicious_listings.reset_index()
 
 df['number_of_reviews'] = df['number_of_reviews'].fillna(0)
 df['price'] = df['price'].replace(0,np.nan)
@@ -105,7 +115,7 @@ highest_score_index = df['score'].idxmax()
 
 listing_with_highest_score = df.loc[highest_score_index]
 
-df.to_csv('Cleaned_airbnb.csv',index=False)
+
 
 print("Null Values:-",null_values)
 print("First 10 rows :-",first_10_rows)
@@ -137,7 +147,51 @@ print("Ideal Listings:-",ideal_listings)
 print("Number of ideal listings:-",len(ideal_listings))
 print("Suspicipious Listings:-",suspicious_listings)
 print("Number of suspicious listings:-",len(suspicious_listings))
+print("\n Minimum nights per room type:-",minimum_nights_required_per_room_type)
 
 print("Highest score lisitng:-",listing_with_highest_score)
 
 print("\n\nFinal:-",df)
+
+df.to_csv('Cleaned_Visualized_Airbnb.csv',index=False)
+
+visuals = 'visuals'
+
+if not os.path.exists(visuals):
+    os.makedirs(visuals)
+
+#Visualization()
+plt.figure()
+sns.barplot(x = top_10_expensive_neighbourhoods_price.values,y=top_10_expensive_neighbourhoods_price.index,palette='deep')
+plt.title('Top 10 most expensive neighbourhoods')
+plt.savefig(os.path.join(visuals,'Top 10 most expensive neighbourhoods.png'))
+
+plt.figure()
+sns.violinplot(x='price',y='room_type',data=df,palette='dark')
+plt.title("Room Type vs Price")
+plt.savefig(os.path.join(visuals,"Room type vs Price.png"))
+
+plt.figure()
+sns.heatmap(neighbour_hoods_average_price_df,annot=True)
+plt.title("Average price per neighbourhood")
+
+plt.figure()
+sns.scatterplot(x='availability_365',y='price',data=df)
+plt.title("Comparison ( Availability v Price )")
+
+plt.figure()
+sns.boxplot(x=df['minimum_nights'].min(),y=df['room_type'],data=df,palette='deep')
+plt.title("Minimum nights per room type")
+
+plt.figure()
+sns.barplot(x=top_5_hosts_with_most_listings.values,y=top_5_hosts_with_most_listings.index,palette='rainbow')
+plt.title("Top 5 hosts with most listings")
+plt.savefig(os.path.join(visuals,'Top 5 hosts with most listings.png'))
+
+plt.figure()
+sns.countplot(x = df['calculated_host_listings_count'],hue=df['room_type'])
+plt.title("Listings counts per room type")
+
+
+
+plt.show()
